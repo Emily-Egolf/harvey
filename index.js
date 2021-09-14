@@ -1,6 +1,6 @@
 const Discord = require('discord.js');
 const { PREFIX, TOKEN } = {
-	"PREFIX": "!",
+	"PREFIX": "$",
 	"TOKEN": "ODg3Mzk3MzU4MjAyMTI2Mzk3.YUDjMQ.oDGWA6i-lbZ7pz6zKOscmmEXf3g"
 };
 const ytdl = require('ytdl-core');
@@ -19,11 +19,12 @@ const botCommands = {
 		const vc = message.member.voice.channel;
 		if (!vc) return 'You must be in a voice channel to play music';
 		ytdl.getInfo(url)
-			.then(info => songQueue.push({
-				title: info.videoDetails.title,
-				url: info.videoDetails.video_url}));
-		if (songQueue.length == 1) return startDispatcher(vc, message.channel)
-		else return `**${songQueue.at(-1).title}** added to the queue`},
+			.then(info => {
+				songQueue.push({
+					title: info.videoDetails.title,
+					url: info.videoDetails.video_url});
+				if (songQueue.length == 1) startDispatcher(vc, message.channel)
+				else message.channel.send(`**${songQueue.at(-1).title}** added to the queue`)})},
 	help: (message) => `play,p [url]: Add a song to the queue
 skip,s: Skip the current song
 stop,S: End the queue and current song
@@ -58,8 +59,8 @@ client.on('message', async message => {
 		pt: 'playtop',
 		h: 'help'};
 	command[0] = aliases[command[0]] || command;
-	let response = botCommands[command[0]](message, command.slice(1))
-		|| 'Invalid command. Use `!h` to see a list of commands';
-	if (response) message.channel.send(response)});
+	let f = botCommands[command[0]];
+	if (f) f(message, command.slice(1))
+	else message.channel.send(`Invalid command. Use \`${PREFIX}h\` to see a list of commands`)});
 
 
