@@ -15,17 +15,27 @@ client.once('disconnect', () => console.log('Disconnect!'));
 let currentDispatcher = {};
 const songQueue = [];
 const botCommands = {
-	play: (message, [url]) => {
+	play: (message, [url], top) => {
 		const vc = message.member.voice.channel;
 		if (!vc) return 'You must be in a voice channel to play music';
+		let addSong = top ? songQueue.unshift : songQueue.push;
 		ytdl.getInfo(url)
 			.then(info => {
-				songQueue.push({
+				addSong({
 					title: info.videoDetails.title,
 					url: info.videoDetails.video_url});
 				if (songQueue.length == 1) startDispatcher(vc, message.channel)
 				else message.channel.send(`**${songQueue.at(-1).title}** added to the queue`)})},
-	help: (message) => `play,p [url]: Add a song to the queue
+	skip: () => currentDispatcher.end(),
+	stop: () => (songQueue = [], currentDispatcher.end()),
+	skipto: (_, [n]) = (songQueue = songQueue.slice(n-1), currentDispatcher.end()),
+	queue: (message) => message.channel
+		.send(songQueue
+			.map((s,i) => `${i+1}. **${s.title}**`)
+			.reduce((a,l) => a+'\n'+l)),
+	playtop: (message, args) => botCommands.play(message, args, 1),
+	help: (message) => `The current command prefix is: **${PREFIX}**
+play,p [url]: Add a song to the queue
 skip,s: Skip the current song
 stop,S: End the queue and current song
 skipto,st [n]: Skip to the nth song in the queue
