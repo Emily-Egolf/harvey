@@ -63,23 +63,11 @@ const clearSongState = () => {
 	currentDispatcher = null;
 };
 
-const second = 1;
-const minute = 60 * second;
-const seekMult = [60 * minute, minute, second];
-const seekMax = [10, 59, 59];
-const timestampToS = (seek) => {
-	let seconds = 0;
-	if (typeof seek === 'string') {
-		const segments = seek.split(':');
-		if (segments.length <= seekMult.length) {
-			for (let i = 0; i < segments.length; i++) {
-				if (segments[i] > seekMax[i]) return 0;
-				seconds += seekMult[i] * segments[i];
-			}
-		}
-	}
-	return seconds;
-}
+const timestampToS = (seek, seekMult=[1, 60, 60**2]) =>
+	(typeof seek === 'string') ?
+		seek.split(':').slice(-3).reverse()
+			.reduce((a,v,i) => a+(v*seekMult[i]),0) :
+		0;
 
 const playCurrentSong = (conn, tc) => {
 	const seek = timestampToS(currentSong.seek);
