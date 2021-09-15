@@ -63,15 +63,15 @@ const clearSongState = () => {
 	currentDispatcher = null;
 };
 
-const timestampToS = (seek, seekMult=[1, 60, 60**2]) =>
+const timestamp2sec = (seek, seekMult=[1, 60, 60**2]) =>
 	(typeof seek === 'string') ?
 		seek.split(':').slice(-3).reverse()
 			.reduce((a,v,i) => a+(v*seekMult[i]),0) :
 		0;
 
 const playCurrentSong = (conn, tc) => {
-	const seek = timestampToS(currentSong.seek);
-	currentDispatcher = conn.play(ytdl(currentSong.url), { seek })
+	const seek = timestamp2sec(currentSong.seek);
+	currentDispatcher = conn.play(ytdl(currentSong.url), {seek})
 		.on('finish', () => playNext(conn, tc))
 		.on('error', console.error);
 	tc.send(`Now playing: **${currentSong.title}**${seek ? ` at **${currentSong.seek}**` : ''}`);
@@ -103,6 +103,7 @@ client.on('message', async message => {
 		st: 'skipto',
 		q: 'queue',
 		pt: 'playtop',
+		se: 'seek',
 		h: 'help'};
 	command[0] = aliases[command[0]] || command[0];
 	let f = botCommands[command[0]];
