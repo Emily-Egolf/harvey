@@ -13,35 +13,36 @@ let currentDispatcher;
 let currentSong;
 let songQueue = [];
 const botCommands = {
-	play: (message, [url, seek], top) => {
+	play: async (message, [url, seek], top) => {
 		const vc = message.member.voice.channel;
 		if (!vc) return 'You must be in a voice channel to play music';
-		let addSong = top ? [].unshift : [].push;
-		ytdl.getInfo(url)
-			.then(info => {
-				addSong.apply(songQueue, [{
-					title: info.videoDetails.title,
-					url: info.videoDetails.video_url,
-					seek}]);
-				if (!currentDispatcher) startDispatcher(vc, message.channel)
-				else message.channel.send(`**${songQueue.at(-1).title}** added to the queue`)})
-			.catch(err => {
-				message.channel.send(`harvey don't want to play songs no more`);
+		const addSong = top ? [].unshift : [].push;
+    try {
+      const info = await ytdl.getInfo(url)
+      addSong.apply(songQueue, [{
+        title: info.videoDetails.title,
+        url: info.videoDetails.video_url,
+        seek}]);
+      if (!currentDispatcher) return await startDispatcher(vc, message.channel)
+      else return `**${songQueue.at(-1).title}** added to the queue`}
+    catch (err) {
 				console.error(err);
-				clearSongState()})},
-	skip: () => {if (currentDispatcher) currentDispatcher.end()},
-	stop: () => {clearSongState()},
-	skipto: (_, [n]) => {if (currentDispatcher) {songQueue = songQueue.slice(n-1); currentDispatcher.end()}},
-	queue: (message) => {
-		message.channel.send(songQueue[0] ? songQueue
-			.map((s,i) => `${i+1}. **${s.title}**`)
-			.reduce((a,l) => a+'\n'+l) : `Harvey ain't playing songs no more`)},
-	playtop: (message, args) => botCommands.play(message, args, 1),
-	seek: (message, [seek]) => {
+				clearSongState();
+				return `harvey don't want to play songs no more`}},
+	skip: async () => {if (currentDispatcher) currentDispatcher.end()},
+	stop: async () => {clearSongState()},
+	skipto: async (_, [n]) => {if (currentDispatcher) {songQueue = songQueue.slice(n-1); currentDispatcher.end()}},
+  queue: async message => songQueue[0] ?
+    songQueue
+      .map((s,i) => `${i+1}. **${s.title}**`)
+      .reduce((a,l) => a+'\n'+l) :
+    `Harvey ain't playing songs no more`,
+	playtop: async (message, args) => {await botCommands.play(message, args, 1)},
+	seek: async (message, [seek]) => {
 		if (currentDispatcher && currentSong && seek) {
-			botCommands.playtop(message, [currentSong.url, seek]);
+			await botCommands.playtop(message, [currentSong.url, seek]);
 			botCommands.skip()}},
-	help: (message) => {message.channel.send(
+  help: async () =>
 `The current command prefix is: **${PREFIX}**
 **play, p [url] [time]**: Add a song to the queue optionally specify the timestamp to start at
 **skip, s**: Skip the current song
@@ -50,7 +51,7 @@ const botCommands = {
 **queue, q**: Print the current queue
 **playtop, pt**: Add a song to the front of the queue
 **seek, se [time]**: Seek to a time hh:mm:ss
-**help, h**: Print this message`)}};
+**help, h**: Print this message`};
 
 const clearSongState = () => {
 	songQueue = [];
@@ -72,18 +73,18 @@ const playNext = (conn, tc) => {
 		.on('error', console.error);
 	tc.send(`Now playing: **${currentSong.title}**${seek ? ` at **${currentSong.seek}**` : ''}`)};
 
-const startDispatcher = (vc, tc) =>
-	vc.join()
-		.then(conn => playNext(conn, tc))
-		.catch(err => {
-			tc.send(`Harvey can't be found at the moment, but we'll find him soon enough`);
-			console.error(err);
-			clearSongState()});
+const startDispatcher = async (vc, tc) => {
+	const conn = await vc.join()
+  try {playNext(conn, tc)}
+  catch (err) {
+    console.error(err);
+    clearSongState();
+    return `Harvey can't be found at the moment, but we'll find him soon enough`}};
 
 client.on('message', async message => {
 	if (message.author.bot) return;
 	if (!message.content.startsWith(PREFIX)) return;
-	let command = message.content.slice(1).split(' ');
+	const command = message.content.slice(1).split(' ');
 	const aliases = {
 		p  : 'play',
 		s  : 'skip',
@@ -94,8 +95,10 @@ client.on('message', async message => {
 		se : 'seek',
 		h  : 'help'};
 	command[0] = aliases[command[0]] || command[0];
-	let f = botCommands[command[0]];
-	if (f) f(message, command.slice(1))
-	else message.channel.send(`Invalid command. Use \`${PREFIX}h\` to see a list of commands`)});
+	const f = botCommands[command[0]];
+  const res = f ?
+    await f(message, command.slice(1)) :
+    `Invalid command. Use \`${PREFIX}h\` to see a list of commands`;
+	if (res) message.channel.send(res)});
 
 
