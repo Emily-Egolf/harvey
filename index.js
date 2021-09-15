@@ -10,9 +10,10 @@ client.once('reconnecting', () => console.log('Reconnecting!'));
 client.once('disconnect', () => console.log('Disconnect!'));
 
 let currentDispatcher;
+let currentSong;
 let songQueue = [];
 const botCommands = {
-	play: (message, [url], top) => {
+	play: (message, [url, seek], top) => {
 		const vc = message.member.voice.channel;
 		if (!vc) return 'You must be in a voice channel to play music';
 		let addSong = top ? [].unshift : [].push;
@@ -20,46 +21,91 @@ const botCommands = {
 			.then(info => {
 				addSong.apply(songQueue, [{
 					title: info.videoDetails.title,
-					url: info.videoDetails.video_url}]);
-				if (!currentDispatcher) startDispatcher(vc, message.channel)
+					url: info.videoDetails.video_url,
+					seek,
+				}]);
+				if (!currentDispatcher) startDispatcher(vc, message.channel, playNext)
 				else message.channel.send(`**${songQueue.at(-1).title}** added to the queue`)})
 			.catch(err => {
-				message.channel.send(`harvey isn't feeling too good`);
+				message.channel.send(`harvey don't want to play songs no more`);
 				console.error(err);
 				songQueue = []})},
 	skip: () => {if (currentDispatcher) currentDispatcher.end()},
-	stop: () => {if (currentDispatcher) {songQueue = []; currentDispatcher.end()}},
+	stop: () => clearSongState(),
 	skipto: (_, [n]) => {if (currentDispatcher) {songQueue = songQueue.slice(n-1); currentDispatcher.end()}},
 	queue: (message) => message.channel
 		.send(songQueue[0] ? songQueue
 			.map((s,i) => `${i+1}. **${s.title}**`)
 			.reduce((a,l) => a+'\n'+l) : `Harvey has nothing left to play`),
 	playtop: (message, args) => botCommands.play(message, args, 1),
+	seek: (message, [seek]) => {
+		const vc = message.member.voice.channel;
+		if (!vc) return 'You must be in a voice channel to play music';
+		if (currentDispatcher && currentSong && seek) {
+			currentSong.seek = seek;
+			startDispatcher(vc, message.channel, playCurrentSong);
+		}
+	},
 	help: (message) => message.channel.send(
 `The current command prefix is: **${PREFIX}**
-play,p [url, seek]: Add a song to the queue
+play,p [url]: Add a song to the queue
 skip,s: Skip the current song
 stop,S: End the queue and current song
 skipto,st [n]: Skip to the nth song in the queue
 queue,q: print the current queue
 playtop,pt: Add a song to the front of the queue
+seek,se [time]: Seek to a time hh:mm:ss
 help,h: Print this message`)};
+
+const clearSongState = () => {
+	songQueue = [];
+	currentSong = null;
+	if (currentDispatcher) {
+		currentDispatcher.end();
+	}
+	currentDispatcher = null;
+};
+
+const second = 1;
+const minute = 60 * second;
+const seekMult = [60 * minute, minute, second];
+const seekMax = [10, 59, 59];
+const timestampToS = (seek) => {
+	let seconds = 0;
+	if (typeof seek === 'string') {
+		const segments = seek.split(':');
+		if (segments.length <= seekMult.length) {
+			for (let i = 0; i < segments.length; i++) {
+				if (segments[i] > seekMax[i]) return 0;
+				seconds += seekMult[i] * segments[i];
+			}
+		}
+	}
+	return seconds;
+}
+
+const playCurrentSong = (conn, tc) => {
+	const seek = timestampToS(currentSong.seek);
+	currentDispatcher = conn.play(ytdl(currentSong.url), { seek })
+		.on('finish', () => playNext(conn, tc))
+		.on('error', console.error);
+	tc.send(`Now playing: **${currentSong.title}**${seek ? ` at **${currentSong.seek}**` : ''}`);
+};
 
 const playNext = (conn, tc) => {
 	if (!songQueue.length) return currentDispatcher = conn.disconnect();
-	let song = songQueue.shift();
-	currentDispatcher = conn.play(ytdl(song.url))
-		.on('finish', () => playNext(conn, tc))
-		.on('error', console.error);
-	tc.send(`Now playing: **${song.title}**`)};
+	currentSong = songQueue.shift();
+	playCurrentSong(conn, tc);
+};
 
-const startDispatcher = (vc, tc) =>
+const startDispatcher = (vc, tc, onConnected) =>
 	vc.join()
-		.then(conn => playNext(conn, tc))
+		.then(conn => onConnected(conn, tc))
 		.catch(err => {
 			tc.send(`Harvey can't be found at the moment, but we'll find him soon enough`);
 			console.error(err);
-			songQueue = []});
+			clearSongState();
+		});
 
 client.on('message', async message => {
 	if (message.author.bot) return;
