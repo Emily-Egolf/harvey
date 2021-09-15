@@ -37,7 +37,7 @@ const botCommands = {
 	playtop: (message, args) => botCommands.play(message, args, 1),
 	help: (message) => message.channel.send(
 `The current command prefix is: **${PREFIX}**
-play,p [url]: Add a song to the queue
+play,p [url, seek]: Add a song to the queue
 skip,s: Skip the current song
 stop,S: End the queue and current song
 skipto,st [n]: Skip to the nth song in the queue
