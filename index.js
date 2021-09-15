@@ -22,8 +22,7 @@ const botCommands = {
 				addSong.apply(songQueue, [{
 					title: info.videoDetails.title,
 					url: info.videoDetails.video_url,
-					seek,
-				}]);
+					seek}]);
 				if (!currentDispatcher) startDispatcher(vc, message.channel, playNext)
 				else message.channel.send(`**${songQueue.at(-1).title}** added to the queue`)})
 			.catch(err => {
@@ -43,9 +42,7 @@ const botCommands = {
 		if (!vc) return 'You must be in a voice channel to play music';
 		if (currentDispatcher && currentSong && seek) {
 			currentSong.seek = seek;
-			startDispatcher(vc, message.channel, playCurrentSong);
-		}
-	},
+			startDispatcher(vc, message.channel, playCurrentSong)}},
 	help: (message) => message.channel.send(
 `The current command prefix is: **${PREFIX}**
 play,p [url]: Add a song to the queue

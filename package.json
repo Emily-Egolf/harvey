@@ -11,7 +11,8 @@
     "ytdl-core": "^4.9.1"
   },
   "scripts": {
-		"start": "node index.js",
+		"start": "node index.js | ts | tee -a log.txt & disown",
+		"debug": "node --inspect index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
