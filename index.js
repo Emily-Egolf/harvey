@@ -22,10 +22,14 @@ const botCommands = {
 					title: info.videoDetails.title,
 					url: info.videoDetails.video_url}]);
 				if (!currentDispatcher) startDispatcher(vc, message.channel)
-				else message.channel.send(`**${songQueue.at(-1).title}** added to the queue`)})},
-	skip: () => currentDispatcher.end(),
-	stop: () => (songQueue = [], currentDispatcher.end()),
-	skipto: (_, [n]) => (songQueue = songQueue.slice(n-1), currentDispatcher.end()),
+				else message.channel.send(`**${songQueue.at(-1).title}** added to the queue`)})
+			.catch(err => {
+				message.channel.send(`harvey isn't feeling too good`);
+				console.error(err);
+				songQueue = []})},
+	skip: () => {if (currentDispatcher) currentDispatcher.end()},
+	stop: () => {if (currentDispatcher) {songQueue = []; currentDispatcher.end()}},
+	skipto: (_, [n]) => {if (currentDispatcher) {songQueue = songQueue.slice(n-1); currentDispatcher.end()}},
 	queue: (message) => message.channel
 		.send(songQueue[0] ? songQueue
 			.map((s,i) => `${i+1}. **${s.title}**`)
