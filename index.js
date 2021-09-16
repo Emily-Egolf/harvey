@@ -8,6 +8,9 @@ client.login(TOKEN);
 client.once('ready', () => console.log('Ready!'));
 client.once('reconnecting', () => console.log('Reconnecting!'));
 client.once('disconnect', () => console.log('Disconnect!'));
+client.on('error', err => {
+	console.error(err);
+});
 
 let currentDispatcher;
 let currentSong;
