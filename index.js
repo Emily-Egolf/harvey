@@ -2,15 +2,23 @@ const Discord = require('discord.js');
 const { PREFIX, TOKEN } = require('./config.json');
 const ytdl = require('ytdl-core');
 
-const client = new Discord.Client();
-client.login(TOKEN);
+let client;
 
-client.once('ready', () => console.log('Ready!'));
-client.once('reconnecting', () => console.log('Reconnecting!'));
-client.once('disconnect', () => console.log('Disconnect!'));
-client.on('error', err => {
-	console.error(err);
-});
+const initClient = () => {
+	client = new Discord.Client();
+	client.login(TOKEN);
+	client.once('ready', () => console.log('Ready!'));
+	client.once('reconnecting', () => console.log('Reconnecting!'));
+	client.once('disconnect', () => console.log('Disconnect!'));
+	client.on('error', err => {
+		const t = Date.now();
+		console.error(err);
+		currentDispatcher = null;
+		initClient();
+		botCommands.playtop(currentSong.message, [currentSong.url,
+				currentSong.seek + ((t - currentSong.startTime) / 1000)])})};
+
+initClient();
 
 let currentDispatcher;
 let currentSong;
@@ -25,7 +33,9 @@ const botCommands = {
       addSong.apply(songQueue, [{
         title: info.videoDetails.title,
         url: info.videoDetails.video_url,
-        seek}]);
+        seek,
+				message,
+				startTime: Date.now()}]);
       if (!currentDispatcher) return await startDispatcher(vc, message.channel)
       else return `**${songQueue.at(-1).title}** added to the queue`}
     catch (err) {
