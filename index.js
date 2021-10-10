@@ -13,10 +13,29 @@ const initClient = () => {
 	client.on('error', err => {
 		const t = Date.now();
 		console.error(err);
-		currentDispatcher = null;
 		initClient();
 		botCommands.playtop(currentSong.message, [currentSong.url,
-				currentSong.seek + ((t - currentSong.startTime) / 1000)])})};
+				currentSong.seek + ((t - currentSong.startTime) / 1000)]);
+		botCommands.skip()});
+	client.on('message', async message => {
+		if (message.author.bot) return;
+		if (!message.content.startsWith(PREFIX)) return;
+		const command = message.content.slice(1).split(' ');
+		const aliases = {
+			p  : 'play',
+			s  : 'skip',
+			S  : 'stop',
+			st : 'skipto',
+			q  : 'queue',
+			pt : 'playtop',
+			se : 'seek',
+			h  : 'help'};
+		command[0] = aliases[command[0]] || command[0];
+		const f = botCommands[command[0]];
+		const res = f ?
+			await f(message, command.slice(1)) :
+			`Invalid command. Use \`${PREFIX}h\` to see a list of commands`;
+		if (res) message.channel.send(res)})};
 
 initClient();
 
@@ -93,25 +112,4 @@ const startDispatcher = async (vc, tc) => {
     console.error(err);
     clearSongState();
     return `Harvey can't be found at the moment, but we'll find him soon enough`}};
-
-client.on('message', async message => {
-	if (message.author.bot) return;
-	if (!message.content.startsWith(PREFIX)) return;
-	const command = message.content.slice(1).split(' ');
-	const aliases = {
-		p  : 'play',
-		s  : 'skip',
-		S  : 'stop',
-		st : 'skipto',
-		q  : 'queue',
-		pt : 'playtop',
-		se : 'seek',
-		h  : 'help'};
-	command[0] = aliases[command[0]] || command[0];
-	const f = botCommands[command[0]];
-  const res = f ?
-    await f(message, command.slice(1)) :
-    `Invalid command. Use \`${PREFIX}h\` to see a list of commands`;
-	if (res) message.channel.send(res)});
-
 
